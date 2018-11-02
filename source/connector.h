@@ -5,9 +5,9 @@
  *      Author: Moritz Laim
  */
 
-#ifndef SOURCE_CONNECTOR_H_
-#define SOURCE_CONNECTOR_H_
+#ifndef CONNECTOR_H
+#define CONNECTOR_H
 
+void connector_init(void) ;
 
-
-#endif /* SOURCE_CONNECTOR_H_ */
+#endif /* CONNECTOR_H */
