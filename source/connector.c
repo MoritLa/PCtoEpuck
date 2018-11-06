@@ -13,20 +13,12 @@
 #include "usbcfg.h"
 #include "can.h"
 
+#include "leds.h"
+
 #include "connector.h"
 
 
-#define MCU		0
-enum MCU_messages{SPEED_SETPOINT, TORQUE_SETPOINT, MCU_STATUS,
-					CONTROL, MCU_ERROR, MCU_REQUEST, BMS_CONTACTOR} ;
-#define MOTOR	1
-enum Motor_messages{SPEED_VALUE, TORQUE_VALUE, MOTOR_STATUS} ;
-#define SENSOR	2
-enum Sensor_messages{BREAK_PEDAL, ACCELERATOR, STEERING, WHEEL_SPEED, ACCELERATION,
-						ENVIRONMENT, COCKPIT, BMS_EVENTS, SENEOR_STATUS,
-						SENSOR_ERROR, SENOR_REQUEST} ;
-
-#define MY_TYPE		MCU
+#define MY_TYPE		MOTOR
 #define NO_REP		0
 #define SCM_PERIODS	100 //ms
 
@@ -37,20 +29,17 @@ enum Sensor_messages{BREAK_PEDAL, ACCELERATOR, STEERING, WHEEL_SPEED, ACCELERATI
 
 #define MAX_MESSAGE_LENGTH		8		//Max CAN length
 #define GetDestenee(dest)	(dest & (1<<7))
-#define GetNode(dest) 		((dest & (11<<5))>>5)
-#define GetMessageNb(dest)	(dest & 0x3F)
+#define GetNode(dest) 		((dest & (3<<5))>>5)
+#define GetMessageNb(dest)	(dest & 0x1F)
 
-// global message table
-typedef struct MyMessage_struct
-{
-	uint16_t id ;
-	uint8_t length ;
-	union{
-		uint8_t data_8[8] ;
-		uint16_t data_16[4] ;
-		uint32_t data_32[2];
-	} ;
-} MyMessage;
+#define REQUEST_TYPE_MSG				0x80
+#define REQUEST_TYPE_MSG_ANSWER			(1<<11)
+#define SET_TYPES_TREATED_MSG			0x81
+#define SET_TYPES_TREATED_MSG_ANSWER	((1<<11)+1)
+#define SET_TREAT_MCU					(1<<0)
+#define SET_TREAT_MOTOR					(1<<1)
+#define SET_TREAT_SENSOR				(1<<2)
+#define SET_READOUT						(1<<3)
 
 typedef struct MyCanMessage_struct
 {
@@ -58,9 +47,10 @@ typedef struct MyCanMessage_struct
 	uint8_t period ; // in ms
 } MyCanMessage;
 
-BSEMAPHORE_DECL(can_messages_sem, TRUE) ;
-BSEMAPHORE_DECL(can_lock_sem, TRUE) ;
+BSEMAPHORE_DECL(can_messages_sem, 1) ;
+BSEMAPHORE_DECL(can_lock_sem, 1) ;
 
+// global message table
 //messages are sorted by sender and period
 static MyCanMessage messages[3][16] =
 {
@@ -110,12 +100,13 @@ void send_one_type(uint8_t type, uint8_t period_counter) ;
 void my_can_init(void) ;
 void can_lock(void);
 void can_unlock(void);
-void send_to_PC(const MyMessage out) ;
+
 void messages_table_lock(void);
 void messages_table_unlock(void) ;
 
 
 static bool output ;
+static bool do_readout ;
 static bool treat_MCU ;
 static bool treat_Motor ;
 static bool treat_Sensor ;
@@ -132,7 +123,7 @@ static THD_FUNCTION(CANSend, arg) {
 
     while(1){
     	time = chVTGetSystemTime();
-
+    	set_led(LED1,0) ;
     	period_count %= SCM_PERIODS ;
     	period_count++ ;				//counter from 1 to SCM_PERIODS
 
@@ -142,8 +133,8 @@ static THD_FUNCTION(CANSend, arg) {
     		send_one_type(MOTOR, period_count) ;
     	if(treat_Sensor && output)
     		send_one_type(SENSOR, period_count) ;
-
-    	chThdSleepUntilWindowed(time, time + MS2ST(1));
+    	set_led(LED1,1) ;
+    	chThdSleepUntilWindowed(time, time + MS2ST(100));
 
     }
 }
@@ -159,7 +150,10 @@ static THD_FUNCTION(CANReceive, arg)
     uint8_t i ;
 
     while (1) {
+    	set_led(LED3,1) ;
     	msg_t m = canReceive(&CAND1, CAN_ANY_MAILBOX, &rxf, MS2ST(10));
+    	set_led(LED3,0) ;
+
 		if (m != MSG_OK) {
 			continue;
 		}
@@ -175,14 +169,19 @@ static THD_FUNCTION(CANReceive, arg)
 		input.msg.data_32[0] = rxf.data32[0] ;
 		input.msg.data_32[1] = rxf.data32[1] ;
 
+		if (do_readout)
+			send_to_PC(input.msg) ;
+
 		if(treat_MCU)
 			for (i = 0; i<MCU_INTEREST_LIST_SIZE; i++)
 				if(rxf.SID == MCU_interest_list[i])
 				{
 #if MY_TYPE != MCU
-					send_to_PC(input.msg) ;
+					if(!do_readout)
+						send_to_PC(input.msg) ;
 #else
-					//send to source code
+
+						//send to source code
 #endif
 					break;
 				}
@@ -191,7 +190,9 @@ static THD_FUNCTION(CANReceive, arg)
 				if(rxf.SID == Motor_interest_list[i])
 				{
 #if MY_TYPE != MOTOR
-					send_to_PC(input.msg) ;
+					if(!do_readout)
+						send_to_PC(input.msg) ;
+
 #else
 					//send to source code
 #endif
@@ -202,7 +203,8 @@ static THD_FUNCTION(CANReceive, arg)
 				if(rxf.SID == Sensor_interest_list[i])
 				{
 #if MY_TYPE != SENSOR
-					send_to_PC(input.msg) ;
+					if(!do_readout)
+						send_to_PC(input.msg) ;
 #else
 					//send to source code
 #endif
@@ -217,18 +219,54 @@ static THD_FUNCTION(UARTReceive, arg) {
     chRegSetThreadName(__FUNCTION__);
     (void)arg;
 
-    uint8_t destination, node, message_nb ;
-    uint8_t length ; //in bytes
+    uint8_t destination = 0, node, message_nb=0 ;
+    uint8_t length = 0; //in bytes
     uint8_t data[MAX_MESSAGE_LENGTH] ;
 
-    while(1){
+    MyMessage response ;
 
+    while(1){
+    	set_led(LED5,1) ;
     	chSequentialStreamRead(&SDU1, &destination, sizeof(uint8_t)) ;
+    	set_led(LED5,0) ;
     	chSequentialStreamRead(&SDU1, &length, sizeof(uint8_t)) ;
-    	chSequentialStreamRead(&SDU1, data, length) ;
+    	set_led(LED5,1) ;
+    	if(length)
+    		chSequentialStreamRead(&SDU1, data, length) ;
+    	//chSequentialStreamRead(&SDU1,data, 2*sizeof(uint8_t)) ;
+    	set_led(LED5,0) ;
+    	chThdSleepMilliseconds(100);
 
     	if (GetDestenee(destination))
     	{
+
+    		if (destination == REQUEST_TYPE_MSG)
+    		{
+    			response.id = REQUEST_TYPE_MSG_ANSWER ;
+    			response.data_8[0] = MY_TYPE ;
+    			response.length = sizeof(uint8_t) ;
+
+    			send_to_PC(response) ;
+    		}
+    		else if(destination == SET_TYPES_TREATED_MSG && length == 1)
+			{
+    			response.id = SET_TYPES_TREATED_MSG_ANSWER ;
+				response.data_8[0] = data[0] ;
+				response.length = sizeof(uint8_t) ;
+
+#if (MY_TYPE != MCU)
+				treat_MCU = data[0]&SET_TREAT_MCU;
+#endif
+#if MY_TYPE != MOTOR
+				treat_Motor = data[0]&SET_TREAT_MOTOR ;
+#endif
+#if MY_TYPE != SENSOR
+				treat_Sensor = data[0]&SET_TREAT_SENSOR ;
+#endif
+				do_read_out = data[0]&SET_READOUT ;
+
+				send_to_PC(response) ;
+			}
     		//send to source code
     	}
     	else
@@ -237,10 +275,11 @@ static THD_FUNCTION(UARTReceive, arg) {
     		message_nb = GetMessageNb(destination) ;
     		if(messages[node][message_nb].msg.length == length)
     		{
-    			messages_table_lock() ;
+    			//write_to_table(message_nb, data) ;
+    			/*messages_table_lock() ;*/
     			for(int i = 0; i<8; i++)
     				messages[node][message_nb].msg.data_8[i] = data[i] ;
-    			messages_table_unlock() ;
+    			/*messages_table_unlock() ;*/
     		}
     	}
     }
@@ -263,17 +302,42 @@ void connector_init(void)
 					  NULL);
 	chThdCreateStatic(waUARTReceive,
 					  sizeof(waUARTReceive),
-					  NORMALPRIO-2,
+					  NORMALPRIO-1,
 					  UARTReceive,
 					  NULL);
-
+	output = 1;
+	do_readout = 0 ;
 #if MY_TYPE == MCU
 	treat_MCU  =  1 ;
 #elif MY_TYPE == MOTOR
-	treat_Motor  = 1 ;
+	treat_Motor = 1 ;
 #elif MY_TYPE == SENSOR
 	treat_Sensor  = 1 ;
 #endif
+}
+
+void can_send(bool send)
+{
+	output = send ;
+}
+
+void send_to_PC(const MyMessage out)
+{
+	chSequentialStreamWrite(&SDU1, (uint8_t *) &out.id, sizeof(uint16_t));
+	chSequentialStreamWrite(&SDU1, (uint8_t *) &out.length, sizeof(uint8_t));
+	chSequentialStreamWrite(&SDU1, (uint8_t *) &out.data_8, out.length);
+}
+
+// write to message table (only to section of own node
+void write_to_table(/*uint8_t node, */uint8_t message_nb, uint8_t data[8])
+{
+	//messages_table_lock() ;
+	for(int i=0; i<messages[MY_TYPE][message_nb].msg.length;i++)
+		messages[MY_TYPE][message_nb].msg.data_8[i] = data[i] ;
+	//messages_table_unlock() ;
+
+	if(do_readout)
+		send_to_PC(messages[MY_TYPE][message_nb].msg) ;
 }
 
 // local functions
@@ -304,13 +368,14 @@ void send_one_type(uint8_t type, uint8_t period_counter)
 	{
 		if(!(period_counter%messages[type][message_counter].period)) // if period_count is multiple of period
 		{
-			messages_table_lock() ;
+		//	messages_table_lock() ;
 
 			local_copy = messages[type][message_counter] ;
-			messages_table_unlock() ;
+		//	messages_table_unlock() ;
 
 			send_my_can(local_copy) ;
 		}
+		message_counter++ ;
 	}
 }
 
@@ -325,16 +390,9 @@ void send_my_can(const MyCanMessage out)
     txf.data32[0] = out.msg.data_32[0] ;
     txf.data32[1] = out.msg.data_32[1];
 
-    can_lock() ;
+   // can_lock() ;
     canTransmit(&CAND1, CAN_ANY_MAILBOX, &txf, MS2ST(10));
-    can_unlock() ;
-}
-
-void send_to_PC(const MyMessage out)
-{
-	chSequentialStreamWrite(&SDU1, (uint8_t *) &out.id, sizeof(uint16_t));
-	chSequentialStreamWrite(&SDU1, (uint8_t *) &out.length, sizeof(uint8_t));
-	chSequentialStreamWrite(&SDU1, (uint8_t *) &out.data_8, out.length);
+    //can_unlock() ;
 }
 
 void can_lock(void)
@@ -354,5 +412,5 @@ void messages_table_lock(void)
 
 void messages_table_unlock(void)
 {
-	chBSemWait(&can_messages_sem) ;
+	chBSemSignal(&can_messages_sem) ;
 }

@@ -35,16 +35,16 @@ int main(void)
     uint8_t inter_uart = 'A' ;
 
     while (1) {
-    	chSequentialStreamRead(&SDU1, &inter_uart, sizeof(uint8_t)) ;
+    	//chSequentialStreamRead(&SDU1, &inter_uart, sizeof(uint8_t)) ;
 
-    	chThdSleepMilliseconds(100);
+    	//chThdSleepMilliseconds(100);
 
-    	set_led(LED1,0) ;
-    	chSequentialStreamWrite(&SDU1, &inter_uart, sizeof(uint8_t));
+    	//set_led(LED1,0) ;
+    	//chSequentialStreamWrite(&SDU1, &inter_uart, sizeof(uint8_t));
 
     	// Waits 0,1 second
         chThdSleepMilliseconds(100);
-    	set_led(LED1,1) ;
+    	//set_led(LED1,1) ;
     }
 }
 
