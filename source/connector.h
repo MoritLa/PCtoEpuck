@@ -8,31 +8,37 @@
 #ifndef CONNECTOR_H
 #define CONNECTOR_H
 
+#include <stdint.h>
+#include <stdbool.h>
+
 typedef struct MyMessage_struct
 {
 	uint16_t id ;
 	uint8_t length ;
 	union{
-		uint8_t data_8[8] ;
-		uint16_t data_16[4] ;
-		uint32_t data_32[2];
+		uint8_t data8[8] ;
+		uint16_t data16[4] ;
+		uint32_t data32[2];
 	} ;
 } MyMessage;
 
-#define MCU		0
-enum MCU_messages{SPEED_SETPOINT, TORQUE_SETPOINT, MCU_STATUS,
-					CONTROL, MCU_ERROR, MCU_REQUEST, BMS_CONTACTOR} ;
-#define MOTOR	1
-enum Motor_messages{SPEED_VALUE, TORQUE_VALUE, MOTOR_STATUS} ;
-#define SENSOR	2
-enum Sensor_messages{BREAK_PEDAL, ACCELERATOR, STEERING, WHEEL_SPEED, ACCELERATION,
-						ENVIRONMENT, COCKPIT, BMS_EVENTS, SENEOR_STATUS,
-						SENSOR_ERROR, SENOR_REQUEST} ;
+typedef void (*MessageToSource)(MyMessage input);
 
+
+// initialise threads and variables
 void connector_init(void) ;
 
+// set the output to active (send = 1) or inactive (send = 0)
 void can_send(bool send) ;
+
+// sends the message out to the PC via UART
 void send_to_PC(const MyMessage out) ;
-void write_to_table(uint8_t message_nb, uint8_t data[8]) ;
+
+// writes the data in the CAN message table (at position node, message_nb) if the length is right
+void write_to_table(uint8_t messageNb, uint8_t data[8], uint8_t length, uint8_t node) ;
+
+//
+void init_to_protocol(MessageToSource ProtocolFP) ;
+void init_to_source(MessageToSource SourceFP) ;
 
 #endif /* CONNECTOR_H */

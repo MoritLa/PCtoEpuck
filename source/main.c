@@ -20,7 +20,9 @@
 
 #include <main.h>
 #include "connector.h"
-
+#include "motor.h"
+//#include "ECU.h"
+//#include "sensor.h"
 
 int main(void)
 {
@@ -28,23 +30,15 @@ int main(void)
     chSysInit();
     mpu_init();
 
+    source_init() ;
+
     connector_init() ;
 
 	usb_start();
 
-    uint8_t inter_uart = 'A' ;
 
     while (1) {
-    	//chSequentialStreamRead(&SDU1, &inter_uart, sizeof(uint8_t)) ;
-
-    	//chThdSleepMilliseconds(100);
-
-    	//set_led(LED1,0) ;
-    	//chSequentialStreamWrite(&SDU1, &inter_uart, sizeof(uint8_t));
-
-    	// Waits 0,1 second
         chThdSleepMilliseconds(100);
-    	//set_led(LED1,1) ;
     }
 }
 
