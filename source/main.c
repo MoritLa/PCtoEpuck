@@ -20,8 +20,8 @@
 
 #include <main.h>
 #include "connector.h"
-#include "motor.h"
-//#include "ECU.h"
+//#include "motor.h"
+#include "ecu.h"
 //#include "sensor.h"
 
 int main(void)

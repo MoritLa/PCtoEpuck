@@ -18,7 +18,7 @@
 #include "message_table.h"
 
 
-#define MY_TYPE				MOTOR
+#define MY_TYPE				ECU
 
 #define ECU_INTEREST_LIST_SIZE		12
 #define MOTOR_INTEREST_LIST_SIZE	1
@@ -38,6 +38,7 @@
 #define SET_TREAT_MOTOR					(1<<1)
 #define SET_TREAT_SENSOR				(1<<2)
 #define SET_READOUT						(1<<3)
+#define START_OUTPUT					(1<<4)
 
 typedef struct MyCanMessage_struct
 {
@@ -152,7 +153,7 @@ static THD_FUNCTION(CANSend, arg) {
     	if(treatSensor && output)
     		send_one_type(SENSOR, periodCount) ;
     	set_led(LED1,1) ;
-    	chThdSleepUntilWindowed(time, time + MS2ST(100)) ;
+    	chThdSleepUntilWindowed(time, time + MS2ST(1000)) ;
 
     }
 }
@@ -240,7 +241,7 @@ void connector_init(void)
 					  NORMALPRIO-1,
 					  UARTReceive,
 					  NULL);
-	output = 1;
+	output = 0;
 	doReadout = 0 ;
 
 }
@@ -260,6 +261,8 @@ void send_to_PC(const MyMessage out)
 // write to message table if length is right
 void write_to_table(uint8_t messageNb, uint8_t data[8], uint8_t length, uint8_t node)
 {
+	MyCanMessage localCopy ;
+
 	if(messages[node][messageNb].msg.length == length)
 	{
 		messages_table_lock() ;
@@ -267,10 +270,15 @@ void write_to_table(uint8_t messageNb, uint8_t data[8], uint8_t length, uint8_t 
 		for(int i=0; i<messages[node][messageNb].msg.length;i++)
 			messages[node][messageNb].msg.data8[i] = data[i] ;
 
+		localCopy = messages[node][messageNb] ;
+
 		messages_table_unlock() ;
 
 		if(doReadout)
 			send_to_PC(messages[node][messageNb].msg) ;
+
+		if(localCopy.period == NO_REP)
+			send_my_can(localCopy) ;
 	}
 }
 
@@ -320,6 +328,8 @@ void send_one_type(uint8_t type, uint8_t periodCounter)
 			messages_table_unlock() ;
 
 			send_my_can(localCopy) ;
+			if (type != MY_TYPE)
+				preprocess_can_input(localCopy.msg,true) ;
 		}
 		messageCounter++ ;
 	}

@@ -16,4 +16,5 @@ typedef void (*MessageFromProtocol)(uint8_t messageNb, uint16_t data[4], uint8_t
 void UART_protocol_init(MessageFromProtocol SourceFP) ;
 void send_on_UART(uint8_t messageNb, uint16_t data[4], uint8_t node) ;
 
+
 #endif /* SOURCE_UART_PROTOCOL_H_ */
