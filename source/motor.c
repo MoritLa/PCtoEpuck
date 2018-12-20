@@ -4,7 +4,7 @@
  *  Created on: 9 déc. 2018
  *      Author: Moritz Laim
  */
-#if 0
+#if 1
 #include "motors.h"
 #include "leds.h"
 #include "motor.h"
@@ -18,7 +18,13 @@
 
 #define STOP		0
 
-bool running ;
+#define SPEED_CONVERT	30
+#define STEERING_OFFSET 0x7FFF
+#define SPEED_MAX		0x7FFF
+
+static bool running ;
+
+static int16_t delta_v ;
 
 void treat_UART_data(uint8_t messageNb, uint16_t data[4], uint8_t node) ;
 void treat_CAN_data(uint8_t messageNb, uint16_t data[4], uint8_t node) ;
@@ -49,11 +55,11 @@ void treat_UART_data(uint8_t messageNb, uint16_t data[4], uint8_t node)
 			}
 			break;
 		case TRUE_MOTOR_SPEED_U:
-			speed = data[0] ;
+			speed = data[0]/ SPEED_CONVERT;
 			if(running)
 			{
-				right_motor_set_speed(speed);
-				left_motor_set_speed(speed);
+				right_motor_set_speed(speed-((int32_t)speed)*delta_v/SPEED_MAX);
+				left_motor_set_speed(speed+((int32_t)speed)*delta_v/SPEED_MAX);
 			}
 			else
 			{
@@ -96,6 +102,8 @@ void treat_CAN_data(uint8_t messageNb, uint16_t data[4], uint8_t node)
 			send_on_UART(SPEED_SETPOINT_U, data, MOTOR) ; break;
 		case TORQUE_SETPOINT:
 			send_on_UART(TORQUE_SETPOINT_U, data, MOTOR) ; break;
+		case STEERING:
+			delta_v = (((int16_t) data[0])-STEERING_OFFSET); break ;
 		default: break ;
 		}
 }

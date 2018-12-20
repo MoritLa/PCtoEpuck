@@ -123,7 +123,8 @@ void treat_data_CAN(MyMessage input)
 	case WHEEL_SPEED_ID:
 		toSourceCANFP(WHEEL_SPEED,input.data16,ECU); break;
 	case STEERING_ID:
-		toSourceCANFP(STEERING,input.data16,ECU); break;
+		toSourceCANFP(STEERING,input.data16,ECU);
+		toSourceCANFP(STEERING,input.data16,MOTOR); break;
 	case ACCELERATOR_ID:
 		toSourceCANFP(ACCELERATOR, input.data16, ECU) ; break;
 	case BREAK_PEDAL_ID:

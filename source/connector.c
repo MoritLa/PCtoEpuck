@@ -18,10 +18,10 @@
 #include "message_table.h"
 
 
-#define MY_TYPE				ECU
+#define MY_TYPE				MOTOR
 
 #define ECU_INTEREST_LIST_SIZE		12
-#define MOTOR_INTEREST_LIST_SIZE	1
+#define MOTOR_INTEREST_LIST_SIZE	2
 #define SENSOR_INTEREST_LIST_SIZE	5
 
 #define MAX_CAN_MESSAGE_LENGTH		8		//Max message length
@@ -85,7 +85,7 @@ static const uint16_t ECU_interest_list[12] =
 
 static const uint16_t Motor_interest_list[MOTOR_INTEREST_LIST_SIZE] =
 {
-	SETPOINT_ID
+	SETPOINT_ID, STEERING_ID
 };
 
 static const uint16_t Sensor_interest_list[SENSOR_INTEREST_LIST_SIZE] =
@@ -153,7 +153,7 @@ static THD_FUNCTION(CANSend, arg) {
     	if(treatSensor && output)
     		send_one_type(SENSOR, periodCount) ;
     	set_led(LED1,1) ;
-    	chThdSleepUntilWindowed(time, time + MS2ST(1000)) ;
+    	chThdSleepUntilWindowed(time, time + MS2ST(200)) ;
 
     }
 }
@@ -170,7 +170,7 @@ static THD_FUNCTION(CANReceive, arg)
 
     while (1) {
     	set_led(LED3,1) ;
-    	msg_t m = canReceive(&CAND1, CAN_ANY_MAILBOX, &rxf, MS2ST(10));
+    	msg_t m = canReceive(&CAND1, CAN_ANY_MAILBOX, &rxf, MS2ST(100));
     	set_led(LED3,0) ;
 
 		if (m != MSG_OK)

@@ -20,9 +20,9 @@
 
 #include <main.h>
 #include "connector.h"
-//#include "motor.h"
+#include "motor.h"
 #include "ecu.h"
-//#include "sensor.h"
+#include "sensor.h"
 
 int main(void)
 {
