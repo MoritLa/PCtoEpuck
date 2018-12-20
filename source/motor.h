@@ -1,13 +1,13 @@
 /*
  * motor.h
  *
- *  Created on: 19 déc. 2018
+ *  Created on: 9 déc. 2018
  *      Author: Moritz Laim
  */
 
-#ifndef MOTOR_H_
-#define MOTOR_H_
+#ifndef SOURCE_MOTOR_H_
+#define SOURCE_MOTOR_H_
 
 void source_init(void) ;
 
-#endif /* MOTOR_H_ */
+#endif /* SOURCE_MOTOR_H_ */

@@ -23,7 +23,8 @@
 static MessageFromProtocol toSourceCANFP ;
 
 void treat_data_CAN(MyMessage input) ;
-void convert_16to8_table(uint16_t in[4], uint8_t out[8], uint8_t length, uint8_t Factor) ;
+void convert_16to8_table(uint16_t in[4],uint8_t out[8],
+						 uint8_t lengthByte, uint16_t convertionFactor) ;
 
 //global functions
 void CAN_protocol_init(MessageFromProtocol SourceFP)
@@ -37,60 +38,66 @@ void send_on_CAN(uint8_t messageNb, uint16_t data[4], uint8_t node)
 	uint8_t outData[8] ;
 	switch(node)
 	{
-	case ECU :
+	case MOTOR:
+		switch(messageNb)
+		{
+		case SPEED_VALUE:
+			convert_16to8_table(data, outData, SPEED_VALUE_LENGTH, node) ;
+
+			write_to_table(messageNb, outData, SPEED_VALUE_LENGTH,node);break;
+		default: break;
+		}break;
+
+	case SENSOR:
+		switch(messageNb)
+		{
+		case WHEEL_SPEED:
+			convert_16to8_table(data,outData,WHEEL_SPEED_LENGTH,1) ;
+
+			write_to_table(messageNb, outData, WHEEL_SPEED_LENGTH,node); break;
+		case STEERING:
+			convert_16to8_table(data,outData,STEERING_LENGTH,1) ;
+
+			write_to_table(messageNb, outData, STEERING_LENGTH, node); break;
+		case ACCELERATOR:
+			convert_16to8_table(data, outData, ACCELERATOR_LENGTH,1) ;
+
+			write_to_table(messageNb, outData, ACCELERATOR_LENGTH, node); break;
+		case BREAK_PEDAL:
+			convert_16to8_table(data, outData, BREAK_PEDAL_LENGTH,1) ;
+
+			write_to_table(messageNb, outData, BREAK_PEDAL_LENGTH, node);break;
+		default: break;
+		}break;
+	case ECU:
 		switch(messageNb)
 		{
 		case SPEED_SETPOINT:
 			outData[0] = N_LIM_REG ;
-			outData[1] = data[i] ;
-			outData[2] = data[i]>>8 ;
+			data[0] = data[0]/CONVERT_SPEED ;
+			outData[1] = (data[0]);
+			outData[2] = (data[0]>>8);
 
-			write_to_table(messageNb, outData, SPEED_VALUE_LENGTH,node); break;
+			write_to_table(messageNb, outData,SETPOINT_LENGTH,node) ;
+			break;
 		case TORQUE_SETPOINT:
 			outData[0] = TORQUE_SETPOINT_REG ;
-			outData[1] = data[i] ;
-			outData[2] = data[i]>>8 ;
+			data[0]=data[0]/CONVERT_TORQUE ;
+			outData[1] = (data[0]);
+			outData[2] = (data[0]>>8);
 
-			write_to_table(messageNb, outData, TORQUE_VALUE_LENGTH,node); break;
+			write_to_table(messageNb, outData,SETPOINT_LENGTH,node) ;
+			break;
 		default: break;
-		} break ;
-	case MOTOR :
-		switch(messageNb)
-		{
-		case SPEED_VALUE:
-			convert_16to8_table(data,outData,SPEED_VALUE_LENGTH, CONVERT_TORQUE) ;
+		}break;
+	default: break;
 
-			write_to_table(messageNb, outData, SPEED_VALUE_LENGTH,node); break;
-		case TORQUE_VALUE: break ;
-			convert_16to8_table(data,outData,TORQUE_VALUE_LENGTH, CONVERT_TORQUE) ;
-
-			write_to_table(messageNb, outData, TORQUE_VALUE_LENGTH,node); break;
-		default: break ;
-		}break ;
-	case SENSOR :
-		switch(messageNb)
-		{
-		case WHEEL_SPEED:
-			convert_16to8_table(data,outData,WHEEL_SPEED_LENGTH, CONVERT_TORQUE) ;
-
-			write_to_table(messageNb, outData, WHEEL_SPEED_LENGTH,node); break;
-		case STEERING:
-			convert_16to8_table(data,outData,STEERING_LENGTH, CONVERT_TORQUE) ;
-
-			write_to_table(messageNb, outData, STEERING_LENGTH,node); break;
-		case BREAK_PEDAL:
-			convert_16to8_table(data,outData,BREAK_PEDAL_LENGTH, CONVERT_TORQUE) ;
-
-			write_to_table(messageNb, outData, BREAK_PEDAL_LENGTH, node); break;
-		case ACCELERATOR:
-			convert_16to8_table(data,outData,ACCELERATOR_LENGTH, CONVERT_TORQUE) ;
-
-			write_to_table(messageNb, outData, ACCELERATOR_LENGTH,node); break;
-		default : break ;
-		}
-		break ;
-	default: break ;
 	}
+}
+
+void run_simulation(bool run)
+{
+	can_send(run) ;
 }
 
 //local functions
@@ -106,23 +113,42 @@ void treat_data_CAN(MyMessage input)
 			for(int i = 0; i < (uint8_t)(SETPOINT_LENGTH-1)/2;i++)
 				inData[i]=(input.data8[2*i+1]+(input.data8[2*i+2]<<8))*CONVERT_SPEED ;
 
-			toSourceCANFP(SPEED_SETPOINT,inData,MOTOR);
-			break ;
+			toSourceCANFP(SPEED_SETPOINT,inData,MOTOR);	break ;
 		case TORQUE_SETPOINT_REG:
-			break ;
-		}	break ;
-	case SENSOR_ERROR_ID: break ;
+			for(int i = 0; i < (uint8_t)(SETPOINT_LENGTH-1)/2;i++)
+				inData[i]=(input.data8[2*i+1]+(input.data8[2*i+2]<<8))*CONVERT_SPEED ;
 
+			toSourceCANFP(TORQUE_SETPOINT,inData,MOTOR); break ;
+		}	break ;
+	case WHEEL_SPEED_ID:
+		toSourceCANFP(WHEEL_SPEED,input.data16,ECU); break;
+	case STEERING_ID:
+		toSourceCANFP(STEERING,input.data16,ECU); break;
+	case ACCELERATOR_ID:
+		toSourceCANFP(ACCELERATOR, input.data16, ECU) ; break;
+	case BREAK_PEDAL_ID:
+		toSourceCANFP(BREAK_PEDAL,input.data16,ECU) ; break;
 	default : break ;
 	}
 
 }
 
-void convert_16to8_table(uint16_t in[4], uint8_t out[8], uint8_t length, uint8_t Factor)
+//divided by convertionFActor
+void convert_16to8_table(uint16_t in[4],uint8_t out[8],
+						 uint8_t lengthByte, uint16_t convertionFactor)
 {
-	for(int i = 0; i<length/2;i++)
+	for(uint8_t i = 0; i<lengthByte/2;i++)
 	{
-		out[2*i] = in[i]/Factor ;					//verify
-		out[2*i+1] = (in[i]/Factor)>>8 ;
+		in[i] = in[i]/convertionFactor ;
+		out[2*i]= in[i] ;
+		out[2*i+1] = in[i]>>8 ;
 	}
+}
+
+void convert_8to16_table(uint8_t in[8], uint16_t out[4],
+						 uint8_t lengthByte, uint16_t convertionFactor)
+{
+	for(uint8_t i = 0; i < lengthByte/2;i++)
+		out[i]=(in[2*i+1]+(in[2*i+2]<<8))*convertionFactor ;
+
 }

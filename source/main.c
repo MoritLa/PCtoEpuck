@@ -20,11 +20,9 @@
 
 #include <main.h>
 #include "connector.h"
-
-#include "motor.h"
-#include "sensor.h"
+//#include "motor.h"
 #include "ecu.h"
-
+//#include "sensor.h"
 
 int main(void)
 {
@@ -32,12 +30,12 @@ int main(void)
     chSysInit();
     mpu_init();
 
-    connector_init() ;
+    source_init() ;
 
+    connector_init() ;
 
 	usb_start();
 
-    source_init() ;
 
     while (1) {
         chThdSleepMilliseconds(100);
