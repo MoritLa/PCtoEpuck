@@ -279,6 +279,9 @@ void write_to_table(uint8_t messageNb, uint8_t data[8], uint8_t length, uint8_t 
 
 		if(localCopy.period == NO_REP)
 			send_my_can(localCopy) ;
+
+		if(node != MY_TYPE)
+			toProtocolFP(localCopy.msg) ;
 	}
 }
 
