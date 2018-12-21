@@ -4,7 +4,7 @@
  *  Created on: 16 déc. 2018
  *      Author: Moritz Laim
  */
-#if 0
+#if 1
 #include "stdint.h"
 
 #include "sensor.h"
@@ -14,7 +14,12 @@
 #include "UART_protocol.h"
 #include "message_table.h"
 
+#include "sensors\imu.h"
+
 #define RUN_SIM		(1<<0)
+
+#define MAX_VAL				0x7FFF
+#define STEERING_OFFSET		0x7FFF
 
 enum{PC_FL,PC_FR,PC_RR,PC_RL} ;
 enum{RL, RR, FL, FR} ;
@@ -24,11 +29,46 @@ bool running ;
 void treat_UART_data(uint8_t messageNb, uint16_t data[4], uint8_t node) ;
 void treat_CAN_data(uint8_t messageNb, uint16_t data[4], uint8_t node) ;
 
+
+static THD_WORKING_AREA(waAcceleration, 256) ;
+static THD_FUNCTION(Acceleration, arg) {
+
+    chRegSetThreadName(__FUNCTION__) ;
+    (void)arg;
+    int16_t acc_val[3] ;
+    uint16_t steering_angle ;
+    uint16_t outData[4] ;
+
+    while(1){
+    	if(running)
+    	{
+    		acc_val[0] = get_acc_filtered(0,10) ;
+    		acc_val[1] = get_acc_filtered(1,10) ;
+    		acc_val[2] = get_acc_filtered(2,10) ;
+
+    		steering_angle = (acc_val[1]>>1)+MAX_VAL ;
+
+    		outData[0] = steering_angle ;
+    		send_on_UART( STEERING_ANGLE_U,  outData,  SENSOR) ;
+    	}
+    		chThdSleepMilliseconds(150);
+
+    }
+}
+
+
 void source_init(void)
 {
+	chThdCreateStatic(waAcceleration,
+					  sizeof(waAcceleration),
+					  NORMALPRIO,
+					  Acceleration,
+					  NULL);
 
 	CAN_protocol_init(treat_CAN_data) ;
 	UART_protocol_init(treat_UART_data) ;
+
+	send_on_CAN(STEERING, STEERING_OFFSET ,SENSOR) ;
 }
 
 //local functions
@@ -41,7 +81,9 @@ void treat_UART_data(uint8_t messageNb, uint16_t data[4], uint8_t node)
 		{
 		case SENSOR_CONFIG_U:
 			running = data[0]&RUN_SIM ;
-			run_simulation(running) ; break;
+			run_simulation(running) ;
+
+			break;
 		case TRUE_SPEED_U:
 			outdata[FL] = data[PC_FL] ;
 			outdata[FR] = data[PC_FR] ;

@@ -24,6 +24,10 @@
 #include "ecu.h"
 #include "sensor.h"
 
+messagebus_t bus;
+MUTEX_DECL(bus_lock);
+CONDVAR_DECL(bus_condvar);
+
 int main(void)
 {
     halInit();
@@ -36,6 +40,8 @@ int main(void)
 
 	usb_start();
 
+	messagebus_init(&bus, &bus_lock, &bus_condvar);
+	messagebus_topic_t *imu_topic = messagebus_find_topic_blocking(&bus, "/imu");
 
     while (1) {
         chThdSleepMilliseconds(100);

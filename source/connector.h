@@ -23,7 +23,7 @@ typedef struct MyMessage_struct
 } MyMessage;
 
 typedef void (*MessageToSource)(MyMessage input);
-
+typedef void (*UpdateTiming)(uint8_t node);
 
 // initialise threads and variables
 void connector_init(void) ;
@@ -38,7 +38,7 @@ void send_to_PC(const MyMessage out) ;
 void write_to_table(uint8_t messageNb, uint8_t data[8], uint8_t length, uint8_t node) ;
 
 //
-void init_to_protocol(MessageToSource ProtocolFP) ;
+void init_to_protocol(MessageToSource ProtocolFP, UpdateTiming TimingFP) ;
 void init_to_source(MessageToSource SourceFP) ;
 
 #endif /* CONNECTOR_H */

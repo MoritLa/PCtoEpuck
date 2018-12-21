@@ -18,7 +18,7 @@
 #include "message_table.h"
 
 
-#define MY_TYPE				MOTOR
+#define MY_TYPE				SENSOR
 
 #define ECU_INTEREST_LIST_SIZE		12
 #define MOTOR_INTEREST_LIST_SIZE	2
@@ -70,12 +70,12 @@ static MyCanMessage messages[3][16] =
 		[SENSOR][STEERING].msg.id = STEERING_ID, 			[SENSOR][STEERING].msg.length = STEERING_LENGTH, 			[SENSOR][STEERING].period = STEERING_PERIOD,
 		[SENSOR][WHEEL_SPEED].msg.id = WHEEL_SPEED_ID, 		[SENSOR][WHEEL_SPEED].msg.length = WHEEL_SPEED_LENGTH, 		[SENSOR][WHEEL_SPEED].period = WHEEL_SPEED_PERIOD,
 		[SENSOR][ACCELERATION].msg.id = ACCELERATION_ID,	[SENSOR][ACCELERATION].msg.length = ACCELERATION_LENGTH,	[SENSOR][ACCELERATION].period = ACCELERATION_PERIOD,
-		[SENSOR][ENVIRONMENT].msg.id = ENVIRONMENT_ID, 		[SENSOR][ENVIRONMENT].msg.length = ENVIRONMENT_LENGTH, 		[SENSOR][ENVIRONMENT].period = 50,
-		[SENSOR][COCKPIT].msg.id = COCKPIT_ID, 				[SENSOR][COCKPIT].msg.length = COCKPIT_LENGTH, 				[SENSOR][COCKPIT].period = 10,
-		[SENSOR][BMS_EVENTS].msg.id = BMS_EVENTS_ID, 		[SENSOR][BMS_EVENTS].msg.length = BMS_EVENTS_LENGTH, 		[SENSOR][BMS_EVENTS].period = 10,
-		[SENSOR][SENEOR_STATUS].msg.id = SENEOR_STATUS_ID, 	[SENSOR][SENEOR_STATUS].msg.length = SENEOR_STATUS_LENGTH, 	[SENSOR][SENEOR_STATUS].period = 100,
-		[SENSOR][SENSOR_ERROR].msg.id = SENSOR_ERROR_ID, 	[SENSOR][SENSOR_ERROR].msg.length = SENSOR_ERROR_LENGTH, 	[SENSOR][SENSOR_ERROR].period = NO_REP,
-		[SENSOR][SENOR_REQUEST].msg.id = SENOR_REQUEST_ID, 	[SENSOR][SENOR_REQUEST].msg.length = SENOR_REQUEST_LENGTH, 	[SENSOR][SENOR_REQUEST].period = NO_REP
+		[SENSOR][ENVIRONMENT].msg.id = ENVIRONMENT_ID, 		[SENSOR][ENVIRONMENT].msg.length = ENVIRONMENT_LENGTH, 		[SENSOR][ENVIRONMENT].period = ENVIRONMENT_PERIOD,
+		[SENSOR][COCKPIT].msg.id = COCKPIT_ID, 				[SENSOR][COCKPIT].msg.length = COCKPIT_LENGTH, 				[SENSOR][COCKPIT].period = COCKPIT_PERIOD,
+		[SENSOR][BMS_EVENTS].msg.id = BMS_EVENTS_ID, 		[SENSOR][BMS_EVENTS].msg.length = BMS_EVENTS_LENGTH, 		[SENSOR][BMS_EVENTS].period = BMS_EVENTS_PERIOD,
+		[SENSOR][SENEOR_STATUS].msg.id = SENEOR_STATUS_ID, 	[SENSOR][SENEOR_STATUS].msg.length = SENEOR_STATUS_LENGTH, 	[SENSOR][SENEOR_STATUS].period = SENEOR_STATUS_PERIOD,
+		[SENSOR][SENSOR_ERROR].msg.id = SENSOR_ERROR_ID, 	[SENSOR][SENSOR_ERROR].msg.length = SENSOR_ERROR_LENGTH, 	[SENSOR][SENSOR_ERROR].period = SENSOR_ERROR_PERIOD,
+		[SENSOR][SENOR_REQUEST].msg.id = SENOR_REQUEST_ID, 	[SENSOR][SENOR_REQUEST].msg.length = SENOR_REQUEST_LENGTH, 	[SENSOR][SENOR_REQUEST].period = SENOR_REQUEST_PERIOD
 };
 
 static const uint16_t ECU_interest_list[12] =
@@ -128,6 +128,7 @@ static bool treatSensor = 1 ;
 
 static MessageToSource toProtocolFP;
 static MessageToSource toSourceFP ;
+static UpdateTiming TimingUpdateFP;
 
 // threads
 // Sends prestored messages on CAN bus with base period 100 ms
@@ -153,6 +154,9 @@ static THD_FUNCTION(CANSend, arg) {
     	if(treatSensor && output)
     		send_one_type(SENSOR, periodCount) ;
     	set_led(LED1,1) ;
+
+    	TimingUpdateFP(MY_TYPE) ;
+
     	chThdSleepUntilWindowed(time, time + MS2ST(200)) ;
 
     }
@@ -285,9 +289,10 @@ void write_to_table(uint8_t messageNb, uint8_t data[8], uint8_t length, uint8_t 
 	}
 }
 
-void init_to_protocol(MessageToSource ProtocolFP)
+void init_to_protocol(MessageToSource ProtocolFP, UpdateTiming TimingFP)
 {
 	toProtocolFP = ProtocolFP ;
+	TimingUpdateFP = TimingFP ;
 }
 
 void init_to_source(MessageToSource SourceFP)
