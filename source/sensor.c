@@ -68,7 +68,6 @@ void source_init(void)
 	CAN_protocol_init(treat_CAN_data) ;
 	UART_protocol_init(treat_UART_data) ;
 
-	send_on_CAN(STEERING, STEERING_OFFSET ,SENSOR) ;
 }
 
 //local functions
@@ -85,6 +84,7 @@ void treat_UART_data(uint8_t messageNb, uint16_t data[4], uint8_t node)
 
 			break;
 		case TRUE_SPEED_U:
+			// change order of the data
 			outdata[FL] = data[PC_FL] ;
 			outdata[FR] = data[PC_FR] ;
 			outdata[RL] = data[PC_RL] ;
@@ -105,6 +105,7 @@ void treat_UART_data(uint8_t messageNb, uint16_t data[4], uint8_t node)
 
 void treat_CAN_data(uint8_t messageNb, uint16_t data[4], uint8_t node)
 {
+	// no data treated
 	if(running && node == SENSOR)
 		switch(messageNb)
 		{

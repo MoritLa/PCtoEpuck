@@ -15,8 +15,10 @@ typedef void (*MessageFromProtocol)(uint8_t messageNb, uint16_t data[4], uint8_t
 
 void CAN_protocol_init(MessageFromProtocol SourceFP) ;
 
+// activates the output of the connector module
 void run_simulation(bool run) ;
 
+// sends the message number messageNB on CAN bus
 void send_on_CAN(uint8_t messageNb, uint16_t data[4], uint8_t node) ;
 
 #endif /* CAN_PROTOCOL_H */

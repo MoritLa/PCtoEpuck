@@ -46,6 +46,7 @@ void treat_UART_data(uint8_t messageNb, uint16_t data[4], uint8_t node)
 		switch(messageNb)
 		{
 		case MOTOR_CONFIG_U:
+			// start/stop running the simulation
 			running = data[0]&RUN_SIM ;
 			run_simulation(running) ;
 			if (!running)
@@ -55,6 +56,7 @@ void treat_UART_data(uint8_t messageNb, uint16_t data[4], uint8_t node)
 			}
 			break;
 		case TRUE_MOTOR_SPEED_U:
+			// set speed value of the wheels
 			speed = data[0]/ SPEED_CONVERT;
 			if(running)
 			{
@@ -69,6 +71,7 @@ void treat_UART_data(uint8_t messageNb, uint16_t data[4], uint8_t node)
 			send_on_CAN(SPEED_VALUE, data, MOTOR) ; break;
 		case TRUE_MOTOR_TORQUE_U:
 			torque = data[0] ;
+//// show torque with LEDs, but LEDs are used otherwise
 //			if(abs(data[0])>0)
 //				set_led(LED1,1) ;
 //			else
@@ -98,10 +101,12 @@ void treat_CAN_data(uint8_t messageNb, uint16_t data[4], uint8_t node)
 	if(running && node == MOTOR)
 		switch(messageNb)
 		{
+		// send Speed and torque setpoints on UART
 		case SPEED_SETPOINT:
 			send_on_UART(SPEED_SETPOINT_U, data, MOTOR) ; break;
 		case TORQUE_SETPOINT:
 			send_on_UART(TORQUE_SETPOINT_U, data, MOTOR) ; break;
+		// set the offset for the wheelspeed that makes the robot turn
 		case STEERING:
 			delta_v = (((int16_t) data[0])-STEERING_OFFSET); break ;
 		default: break ;

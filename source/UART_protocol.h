@@ -14,6 +14,8 @@
 typedef void (*MessageFromProtocol)(uint8_t messageNb, uint16_t data[4], uint8_t node);
 
 void UART_protocol_init(MessageFromProtocol SourceFP) ;
+
+// send the message message Nb on to the computer via UART
 void send_on_UART(uint8_t messageNb, uint16_t data[4], uint8_t node) ;
 
 

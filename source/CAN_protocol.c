@@ -36,6 +36,7 @@ typedef struct ProtocolTiming_struct
 	uint8_t last_time ;
 } ProtocolTiming;
 
+// table that keeps track of the timing of the the messages
 static ProtocolTiming lastMessageTime[3][16] =
 {
 		[ECU][SPEED_SETPOINT].protocol_time = SETPOINT_PERIOD,			[ECU][SPEED_SETPOINT].last_time = NOW ,
@@ -63,6 +64,7 @@ static ProtocolTiming lastMessageTime[3][16] =
 		[SENSOR][SENOR_REQUEST].protocol_time = SENOR_REQUEST_PERIOD,	[SENSOR][SENOR_REQUEST].last_time = NOW
 };
 
+// list of the messages, that should be received by the nodes
 #define ECU_LIST_LENGTH		4
 
 static const uint8_t ECU_list[2][ECU_LIST_LENGTH] =
@@ -85,6 +87,8 @@ static const uint8_t Sensor_list[2][SENSOR_LIST_LENGTH] =
 {
 
 };
+
+
 static MessageFromProtocol toSourceCANFP ;
 static bool running;
 
@@ -104,6 +108,7 @@ void CAN_protocol_init(MessageFromProtocol SourceFP)
 void send_on_CAN(uint8_t messageNb, uint16_t data[4], uint8_t node)
 {
 	uint8_t outData[8] ;
+	// change format form internal identifier/data size to CAN format
 	switch(node)
 	{
 	case MOTOR:
@@ -140,6 +145,7 @@ void send_on_CAN(uint8_t messageNb, uint16_t data[4], uint8_t node)
 	case ECU:
 		switch(messageNb)
 		{
+		// add register of the Bamocar CAN protocol
 		case SPEED_SETPOINT:
 			outData[0] = N_LIM_REG ;
 			data[0] = data[0]/CONVERT_SPEED ;
@@ -176,6 +182,7 @@ void treat_data_CAN(MyMessage input)
 	switch (input.id)
 	{
 	case SETPOINT_ID :
+		// check for the register of the Bamocar CAN-protocol
 		switch (input.data8[0])
 		{
 		case N_LIM_REG:
@@ -209,6 +216,8 @@ void treat_data_CAN(MyMessage input)
 
 }
 
+// increace the counter for the messages the node should receive. When bigger than
+// two times the expected period, the body LED is acivated.
 void update_timing(uint8_t node)
 {
 	if(running)
@@ -248,7 +257,7 @@ void update_timing(uint8_t node)
 		}
 }
 
-//divided by convertionFActor
+// transfomr 16 bit to 8 bit table and divided by convertionFactor
 void convert_16to8_table(uint16_t in[4],uint8_t out[8],
 						 uint8_t lengthByte, uint16_t convertionFactor)
 {
