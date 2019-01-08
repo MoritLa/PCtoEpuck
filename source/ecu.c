@@ -22,7 +22,7 @@
 #define MAX_SPEED		0xE8B9
 #define MAX_WHEEL_SPEED	0xBEAA
 #define SPEED_RED		2
-#define SLIP_SPEED		100
+#define SLIP_SPEED		1000
 
 #define MAX_BRAKE_VAL	0xFFFF
 #define TORQUE_OFFSET	0x7FFF

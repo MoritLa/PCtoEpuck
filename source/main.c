@@ -40,10 +40,6 @@ int main(void)
 
 	usb_start();
 
-	// I tried to use IMU, but did not finish
-	messagebus_init(&bus, &bus_lock, &bus_condvar);
-	messagebus_topic_t *imu_topic = messagebus_find_topic_blocking(&bus, "/imu");
-
     while (1) {
         chThdSleepMilliseconds(100);
     }

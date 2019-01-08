@@ -4,7 +4,7 @@
  *  Created on: 16 déc. 2018
  *      Author: Moritz Laim
  */
-#if 1
+#if 0
 #include "stdint.h"
 
 #include "sensor.h"
@@ -19,7 +19,7 @@
 #define RUN_SIM		(1<<0)
 
 #define MAX_VAL				0x7FFF
-#define STEERING_OFFSET		0x7FFF
+#define STEERING_OFFS		0x7FFF
 
 enum{PC_FL,PC_FR,PC_RR,PC_RL} ;
 enum{RL, RR, FL, FR} ;
@@ -30,7 +30,7 @@ void treat_UART_data(uint8_t messageNb, uint16_t data[4], uint8_t node) ;
 void treat_CAN_data(uint8_t messageNb, uint16_t data[4], uint8_t node) ;
 
 
-static THD_WORKING_AREA(waAcceleration, 256) ;
+static THD_WORKING_AREA(waAcceleration, 1024) ;
 static THD_FUNCTION(Acceleration, arg) {
 
     chRegSetThreadName(__FUNCTION__) ;
@@ -39,6 +39,10 @@ static THD_FUNCTION(Acceleration, arg) {
     uint16_t steering_angle ;
     uint16_t outData[4] ;
 
+    imu_start() ;
+
+    calibrate_acc();
+
     while(1){
     	if(running)
     	{
@@ -46,12 +50,13 @@ static THD_FUNCTION(Acceleration, arg) {
     		acc_val[1] = get_acc_filtered(1,10) ;
     		acc_val[2] = get_acc_filtered(2,10) ;
 
-    		steering_angle = (acc_val[1]>>1)+MAX_VAL ;
+    		steering_angle = -(acc_val[0]*2)+MAX_VAL ;
 
     		outData[0] = steering_angle ;
     		send_on_UART( STEERING_ANGLE_U,  outData,  SENSOR) ;
     	}
-    		chThdSleepMilliseconds(150);
+
+    	chThdSleepMilliseconds(150);
 
     }
 }
@@ -59,6 +64,7 @@ static THD_FUNCTION(Acceleration, arg) {
 
 void source_init(void)
 {
+	uint16_t inter ;
 	chThdCreateStatic(waAcceleration,
 					  sizeof(waAcceleration),
 					  NORMALPRIO,
@@ -67,6 +73,8 @@ void source_init(void)
 
 	CAN_protocol_init(treat_CAN_data) ;
 	UART_protocol_init(treat_UART_data) ;
+	inter = STEERING_OFFS ;
+	send_on_CAN(STEERING, &inter,SENSOR) ;
 
 }
 

@@ -73,19 +73,20 @@ static const uint8_t ECU_list[2][ECU_LIST_LENGTH] =
 		{BREAK_PEDAL, 	ACCELERATOR, 	STEERING, 	WHEEL_SPEED}
 };
 
-#define MOTOR_LIST_LENGTH		3
+#define MOTOR_LIST_LENGTH		4
 
 static const uint8_t Motor_list[2][MOTOR_LIST_LENGTH] =
 {
-		{ECU,				ECU,			 SENSOR},
-		{SPEED_SETPOINT, 	TORQUE_SETPOINT, STEERING}
+		{ECU,				ECU,			 ECU,			SENSOR},
+		{SPEED_SETPOINT, 	TORQUE_SETPOINT, ECU_STATUS,	STEERING}
 };
 
-#define SENSOR_LIST_LENGTH		0
+#define SENSOR_LIST_LENGTH		1
 
 static const uint8_t Sensor_list[2][SENSOR_LIST_LENGTH] =
 {
-
+		{ECU	},
+		{ECU_STATUS}
 };
 
 
@@ -198,6 +199,8 @@ void treat_data_CAN(MyMessage input)
 			toSourceCANFP(TORQUE_SETPOINT,inData,MOTOR);
 			lastMessageTime[ECU][TORQUE_SETPOINT].last_time = NOW ;break ;
 		}	break ;
+	case ECU_STATUS_ID:
+		lastMessageTime[ECU][ECU_STATUS].last_time = NOW ; break;
 	case WHEEL_SPEED_ID:
 		toSourceCANFP(WHEEL_SPEED,input.data16,ECU);
 		lastMessageTime[SENSOR][WHEEL_SPEED].last_time = NOW ; break;

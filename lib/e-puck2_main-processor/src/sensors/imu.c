@@ -41,12 +41,12 @@ static THD_FUNCTION(imu_reader_thd, arg) {
                                 (eventmask_t)EXTI_EVENT_IMU_INT,
                                 (eventflags_t)EXTI_EVENT_IMU_INT);
 
-     // Declares the topic on the bus.
-     messagebus_topic_t imu_topic;
-     MUTEX_DECL(imu_topic_lock);
-     CONDVAR_DECL(imu_topic_condvar);
-     messagebus_topic_init(&imu_topic, &imu_topic_lock, &imu_topic_condvar, &imu_values, sizeof(imu_values));
-     messagebus_advertise_topic(&bus, &imu_topic, "/imu");
+//     // Declares the topic on the bus.
+//     messagebus_topic_t imu_topic;
+//     MUTEX_DECL(imu_topic_lock);
+//     CONDVAR_DECL(imu_topic_condvar);
+//     messagebus_topic_init(&imu_topic, &imu_topic_lock, &imu_topic_condvar, &imu_values, sizeof(imu_values));
+//     messagebus_advertise_topic(&bus, &imu_topic, "/imu");
 
      uint8_t accCalibrationNumSamples = 0;
      int32_t accCalibrationSum = 0;
@@ -70,8 +70,8 @@ static THD_FUNCTION(imu_reader_thd, arg) {
     	}
 
 
-         /* Publishes it on the bus. */
-         messagebus_topic_publish(&imu_topic, &imu_values, sizeof(imu_values));
+//         /* Publishes it on the bus. */
+//         messagebus_topic_publish(&imu_topic, &imu_values, sizeof(imu_values));
 
          if(accAxisFilteringInProgress) {
          	switch(accAxisFilteringState) {

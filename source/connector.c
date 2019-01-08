@@ -18,7 +18,7 @@
 #include "message_table.h"
 
 
-#define MY_TYPE				SENSOR
+#define MY_TYPE						MOTOR
 
 #define ECU_INTEREST_LIST_SIZE		12
 #define MOTOR_INTEREST_LIST_SIZE	2
@@ -26,9 +26,9 @@
 
 #define MAX_CAN_MESSAGE_LENGTH		8		//Max message length
 #define MAX_UART_MESSAGE_LENGTH		8
-#define GetDestenee(dest)	(dest & (1<<7))
-#define GetNode(dest) 		((dest & (3<<5))>>5)
-#define GetMessageNb(dest)	(dest & 0x1F)
+#define GetDestenee(dest)			(dest & (1<<7))
+#define GetNode(dest) 				((dest & (3<<5))>>5)
+#define GetMessageNb(dest)			(dest & 0x1F)
 
 #define REQUEST_TYPE_MSG				0x80
 #define REQUEST_TYPE_MSG_ANSWER			(1<<11)
